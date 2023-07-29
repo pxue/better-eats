@@ -4,7 +4,7 @@
 // @version      0.1
 // @description  try to take over the world!
 // @author       pxue
-// @match        https://www.ubereats.com/ca/feed*
+// @match        https://www.ubereats.com/*feed*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=ubereats.com
 // @grant        none
 // @require      http://code.jquery.com/jquery-3.6.0.min.js
