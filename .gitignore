@@ -1,0 +1,5 @@
+# Temporary files
+*.tmp
+
+# Text files
+*.txt
