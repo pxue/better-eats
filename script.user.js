@@ -18,10 +18,15 @@
 
   console.log("loading");
 
+  const deelsStrs = {
+    bogoOnly: "buy 1, get 1 free",
+    spend10Get8: "spend $10, save $8",
+  };
+
   const raw = window.localStorage.getItem("ubereats");
   const storedData = raw
     ? JSON.parse(raw)
-    : { ratingMin: 4.5, bogoOnly: false, excludeList: [] };
+    : { ratingMin: 4.5, bogoOnly: false, spend10Get8: false, excludeList: [] };
   if (!raw) {
     window.localStorage.setItem("ubereats", JSON.stringify(storedData));
   }
@@ -35,40 +40,52 @@
         itemClass = $(el).attr("class");
       }
 
-      let shouldHide = false;
-
-      const ahref = $("a", el);
-      // 1. check name filters
-      for (let ex of storedData.excludeList) {
-        if (ahref.attr("href").includes(ex)) {
-          shouldHide = true;
-        }
-      }
-
-      // 2. check bogo
-      if (storedData.bogoOnly) {
-        const perkDiv = $("> div > div", ahref.next()).eq(0);
-        if (!perkDiv.text().toLowerCase().includes("buy 1, get 1 free")) {
-          shouldHide = true;
-        }
-      }
-
-      const deetDiv = $("> div > div", ahref.next()).eq(1);
-      $("div", $(deetDiv)).each(function () {
-        // 3. check ratings
-        const text = $(el).text().trim();
-        if (!text) {
-          return;
-        }
-        const rating = text.match(/\d(.\d+)?(?= out of \d stars)/g);
-        if (rating?.length) {
-          if (parseFloat(rating[0]) < parseFloat(storedData.ratingMin)) {
-            shouldHide = true;
-            return;
+      function checkShouldHide() {
+        const ahref = $("a", el);
+        // 1. check name filters
+        for (let ex of storedData.excludeList) {
+          if (ahref.attr("href").includes(ex)) {
+            return true;
           }
         }
-      });
 
+        function checkDeel(key) {
+          const perkDiv = $("> div > div", ahref.next()).eq(0);
+          if (perkDiv.text().toLowerCase().includes(key)) {
+            return true;
+          }
+          return false;
+        }
+
+        // 2. check deels
+        const deelsCheck = Object.keys(deelsStrs)
+          .map((k) => (storedData[k] ? checkDeel(deelsStrs[k]) : null))
+          .filter((v) => v !== null);
+        if (deelsCheck?.length && deelsCheck.every((v) => !v)) {
+          return true;
+        }
+
+        let shouldHideByRating = false;
+        const deetDiv = $("> div > div", ahref.next()).eq(1);
+        $("div", $(deetDiv)).each(function () {
+          // 3. check ratings
+          const text = $(el).text().trim();
+          if (!text) {
+            return;
+          }
+          const rating = text.match(/\d(.\d+)?(?= out of \d stars)/g);
+          if (rating?.length) {
+            if (parseFloat(rating[0]) < parseFloat(storedData.ratingMin)) {
+              shouldHideByRating = true;
+              return;
+            }
+          }
+        });
+
+        return shouldHideByRating;
+      }
+
+      const shouldHide = checkShouldHide();
       if (shouldHide) {
         $(el).hide();
       } else if (!shouldHide && $(el).is(":hidden")) {
@@ -144,11 +161,41 @@
       }
       appendBogoFilter();
 
+      function appendSpend10Get8Filter() {
+        const filter = $(`
+          <div style="display:flex; justify-content: space-between;">
+             Spend $10, Get $8
+             <input type="checkbox" />
+          </div>
+        `);
+        // copy a checkbox component
+        filters.append(filter);
+        filters.append("<div style='margin-bottom: 18px' />");
+
+        const input = $("input:checkbox", filter);
+        input.attr("checked", storedData.spend10Get8);
+        input.on("click", function () {
+          $(this).attr("checked", !$(this).attr("checked"));
+          storedData.spend10Get8 = $(this).is(":checked");
+          window.localStorage.setItem("ubereats", JSON.stringify(storedData));
+          $("> div", mainFeed).each(function () {
+            autoFilterItems($(this));
+          });
+        });
+      }
+      appendSpend10Get8Filter();
+
       function appendExclusionFilter() {
         const exclusionFilter = document.createElement("div");
         exclusionFilter.style.display = "flex";
         exclusionFilter.style["flex-direction"] = "column";
         exclusionFilter.append("Black list");
+
+        const filterSubtitle = document.createElement("span");
+        filterSubtitle.style["font-size"] = "12px";
+        filterSubtitle.textContent =
+          "use this list to hide restaurants you do not want to see, one per line";
+        exclusionFilter.append(filterSubtitle);
         const excludeTextArea = document.createElement("textarea");
 
         excludeTextArea.setAttribute("rows", 20);
@@ -196,6 +243,24 @@
         });
       }
       appendRatingFilter();
+
+      function appendApplyButton() {
+        const button = document.createElement("button");
+        button.id = "reload";
+        button.textContent = "Apply filters";
+        button.style["border"] = "1px solid #000";
+        button.style["background-color"] = "rgb(238, 238, 238)";
+        button.style["font-size"] = "14px";
+        button.style["font-weight"] = "500";
+        button.style["padding"] = "6px 12px";
+        filters.append(button);
+
+        jQuery("#reload").click(function () {
+          console.log("here");
+          location.reload();
+        });
+      }
+      appendApplyButton();
     }, 2500);
 
     console.log("Ready");
