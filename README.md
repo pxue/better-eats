@@ -9,9 +9,11 @@ Better Eats is a Tampermonkey script that improves Uber Eats web experience.
 1. Install [Tampermonkey](https://tampermonkey.net/)
 2. Navigate to [this file](https://github.com/pxue/better-eats/blob/main/script.user.js), click the "Raw" bottom at top right corner.
 3. It should automatically open Tampermonkey for installation.
+4. ** Must be used on the "Offers" pre-filtered page  **
 
 ### Features:
 
+- Works both in Canada (`/ca/feed`) and the US (`/feed`)
 - Show only Buy 1, Get 1 free deals
 - Filter by exact rating (ie. 4.5+)
 - Black list (ie. hide all McDonald's)
@@ -21,7 +23,6 @@ Better Eats is a Tampermonkey script that improves Uber Eats web experience.
 - Updated grid to have 5 items per row
 
 ... more features coming soon ...
-
 
 ### Exclusion list
 
