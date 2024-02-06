@@ -29,7 +29,7 @@
   const storedData = raw
     ? JSON.parse(raw)
     : {
-        ratingMin: 4.5,
+        // ratingMin: 4.5,
         bogoOnly: false,
         spend10Get8: false,
         deliveryTimeMax: 0,
@@ -71,28 +71,6 @@
           return [true, "deal"];
         }
 
-        // 3. check ratings
-        let shouldHide = false;
-
-        const deetDiv = $("> div > div", ahref.next()).eq(1);
-        $("div", $(deetDiv)).each(function () {
-          // 3. check ratings
-          const text = $(el).text().trim();
-          if (!text) {
-            return;
-          }
-          const rating = text.match(/\d(.\d+)?(?= out of \d stars)/g);
-          if (rating?.length) {
-            if (parseFloat(rating[0]) < parseFloat(storedData.ratingMin)) {
-              shouldHide = true;
-              return;
-            }
-          }
-        });
-        if (shouldHide) {
-          return [shouldHide, "rating"];
-        }
-
         // 4. check delivery time
         const shouldHideDelivery = () => {
           const div = $(
@@ -122,7 +100,7 @@
 
       const [shouldHide, reason] = checkShouldHide();
       if (shouldHide) {
-        d(reason);
+        // d(`shouldHide: ${reason}`);
         $(el).hide();
         return;
       }
@@ -182,186 +160,162 @@
       console.log(`processed: ${count} items`);
     });
 
-    $(document).arrive("div[data-test='feed-desktop']", function () {
-      // 'this' refers to the newly created element
-      var mainFeed = $(this);
-      mainFeed.css("grid-template-columns", "repeat(5, 1fr)");
-      mainFeed.css("gap", "20px 8px");
-      console.log("mainfeed arrived!", mainFeed[0]);
+    setTimeout(() => {
+      console.log("main content arrived");
+      const mainContent = $("#main-content");
+      const mainFeed = $("div[data-test='feed-desktop']");
+      const ogButtonGroup = $("div[role='group']", mainContent);
+      const buttonGroup = ogButtonGroup.clone();
+      const buttonTmp = $("button:first", buttonGroup).clone();
+      ogButtonGroup.parent().append(buttonGroup);
+      ogButtonGroup.parent().attr("style", "flex-direction: column; gap: 10px");
+      buttonGroup.empty();
 
-      $("> div", mainFeed).each(function () {
-        autoFilterItems($(this));
-      });
+      function appendBogoFilter() {
+        const bogoFilter = buttonTmp.clone();
+        bogoFilter.attr("id", "bogoFilter");
+        bogoFilter.contents()[1].textContent = "Buy 1, Get 1";
+        buttonGroup.append(bogoFilter);
+        bogoFilter.wrap("<div></div");
 
-      observer.observe(mainFeed[0], {
-        attributes: true,
-        childList: true,
-        characterData: true,
-      });
-
-      setTimeout(() => {
-        const mainContent = $("#main-content");
-        const mainFeed = $("div[data-test='feed-desktop']");
-        const sidebar = $("> div > div > div:first", mainContent);
-        sidebar
-          .parent()
-          .append(`<div id="better-filters"><h1>Better filters</h1></div>`);
-        const filters = $("#better-filters");
-        filters.addClass(sidebar.attr("class"));
-
-        function appendBogoFilter() {
-          const bogoFilter = $(`
-          <div style="display:flex; justify-content: space-between;">
-             Buy 1, Get 1
-             <input type="checkbox" />
-          </div>
-        `);
-          // copy a checkbox component
-          filters.append(bogoFilter);
-          filters.append("<div style='margin-bottom: 18px' />");
-
-          const input = $("input:checkbox", bogoFilter);
-          input.attr("checked", storedData.bogoOnly);
-          input.on("click", function () {
-            $(this).attr("checked", !$(this).attr("checked"));
-            storedData.bogoOnly = $(this).is(":checked");
-            window.localStorage.setItem("ubereats", JSON.stringify(storedData));
-            $("> div", mainFeed).each(function () {
-              autoFilterItems($(this));
-            });
-          });
-        }
-        appendBogoFilter();
-
-        function appendSpend10Get8Filter() {
-          const filter = $(`
-          <div style="display:flex; justify-content: space-between;">
-             Spend $10, Get $8
-             <input type="checkbox" />
-          </div>
-        `);
-          // copy a checkbox component
-          filters.append(filter);
-          filters.append("<div style='margin-bottom: 18px' />");
-
-          const input = $("input:checkbox", filter);
-          input.attr("checked", storedData.spend10Get8);
-          input.on("click", function () {
-            $(this).attr("checked", !$(this).attr("checked"));
-            storedData.spend10Get8 = $(this).is(":checked");
-            window.localStorage.setItem("ubereats", JSON.stringify(storedData));
-            $("> div", mainFeed).each(function () {
-              autoFilterItems($(this));
-            });
-          });
-        }
-        appendSpend10Get8Filter();
-
-        function appendExclusionFilter() {
-          const exclusionFilter = document.createElement("div");
-          exclusionFilter.style.display = "flex";
-          exclusionFilter.style["flex-direction"] = "column";
-          exclusionFilter.append("Black list");
-
-          const filterSubtitle = document.createElement("span");
-          filterSubtitle.style["font-size"] = "12px";
-          filterSubtitle.textContent =
-            "use this list to hide restaurants you do not want to see, one per line";
-          exclusionFilter.append(filterSubtitle);
-          const excludeTextArea = document.createElement("textarea");
-
-          excludeTextArea.setAttribute("rows", 20);
-          excludeTextArea.setAttribute("id", "excludeList");
-          excludeTextArea.style.width = "100%";
-          exclusionFilter.append(excludeTextArea);
-          exclusionFilter.style["margin-bottom"] = "12px";
-
-          jQuery(excludeTextArea).val(storedData.excludeList.join("\n"));
-          jQuery(excludeTextArea).on("blur", function () {
-            storedData.excludeList = $(this).val().split("\n");
-            window.localStorage.setItem("ubereats", JSON.stringify(storedData));
-            $("> div", mainFeed).each(function () {
-              autoFilterItems($(this));
-            });
-          });
-          filters.append(exclusionFilter);
-        }
-        appendExclusionFilter();
-
-        function appendRatingFilter() {
-          const ratingFilter = document.createElement("div");
-          ratingFilter.style.display = "flex";
-          ratingFilter.style["flex-direction"] = "column";
-          ratingFilter.style["margin-bottom"] = "12px";
-          ratingFilter.append("Ratings");
-
-          const ratingInput = jQuery(
-            `<div style="display:flex;">
-             Minimum:
-             <input id="ratingMin" type="number" style="border: 1px solid #000" />
-           </div>`
+        bogoFilter.on("click", function () {
+          storedData.bogoOnly = !storedData.bogoOnly;
+          bogoFilter.attr(
+            "style",
+            storedData.bogoOnly
+              ? "background-color: black; color: white;"
+              : "background-color: white; color: black;"
           );
-
-          ratingFilter.append(ratingInput[0]);
-          filters.append(ratingFilter);
-
-          jQuery("#ratingMin").val(storedData.ratingMin);
-          jQuery("#ratingMin").on("blur", function () {
-            storedData.ratingMin = parseFloat($(this).val());
-            window.localStorage.setItem("ubereats", JSON.stringify(storedData));
-            $("> div", mainFeed).each(function () {
-              autoFilterItems($(this));
-            });
+          window.localStorage.setItem("ubereats", JSON.stringify(storedData));
+          $("> div", mainFeed).each(function () {
+            autoFilterItems($(this));
           });
-        }
-        appendRatingFilter();
+        });
+      }
+      appendBogoFilter();
 
-        function appendDeliveryTimeFilter() {
-          const filter = document.createElement("div");
-          filter.style.display = "flex";
-          filter.style["flex-direction"] = "column";
-          filter.style["margin-bottom"] = "12px";
-          filter.append("Delivery time");
+      function appendSpend10Get8Filter() {
+        const sp10Filter = buttonTmp.clone();
+        sp10Filter.attr("id", "sp10");
+        sp10Filter.contents()[1].textContent = "Spend $10, Get $8";
+        buttonGroup.append(sp10Filter);
+        sp10Filter.wrap("<div></div");
 
-          const input = jQuery(
-            `<div style="display:flex;">
+        sp10Filter.on("click", function () {
+          storedData.spend10Get8 = !storedData.spend10Get8;
+          sp10Filter.attr(
+            "style",
+            storedData.spend10Get8
+              ? "background-color: black; color: white;"
+              : "background-color: white; color: black;"
+          );
+          window.localStorage.setItem("ubereats", JSON.stringify(storedData));
+          $("> div", mainFeed).each(function () {
+            autoFilterItems($(this));
+          });
+        });
+      }
+      appendSpend10Get8Filter();
+
+      function appendDeliveryTimeFilter() {
+        const filter = document.createElement("div");
+        filter.style.display = "flex";
+        filter.style["flex-direction"] = "column";
+        filter.style["margin-bottom"] = "12px";
+        filter.append("Delivery time");
+
+        const input = jQuery(
+          `<div style="display:flex;">
         Max delivery time:
         <input id="deliveryTimeMax" type="number" style="border: 1px solid #000" />
         </div>`
-          );
+        );
 
-          filter.append(input[0]);
-          filters.append(filter);
+        filter.append(input[0]);
+        buttonGroup.append(filter);
 
-          jQuery("#deliveryTimeMax").val(storedData.deliveryTimeMax);
-          jQuery("#deliveryTimeMax").on("blur", function () {
-            storedData.deliveryTimeMax = parseFloat($(this).val());
-            window.localStorage.setItem("ubereats", JSON.stringify(storedData));
-            $("> div", mainFeed).each(function () {
-              autoFilterItems($(this));
-            });
+        jQuery("#deliveryTimeMax").val(storedData.deliveryTimeMax);
+        jQuery("#deliveryTimeMax").on("blur", function () {
+          storedData.deliveryTimeMax = parseFloat($(this).val());
+          window.localStorage.setItem("ubereats", JSON.stringify(storedData));
+          $("> div", mainFeed).each(function () {
+            autoFilterItems($(this));
           });
-        }
-        appendDeliveryTimeFilter();
+        });
+      }
+      appendDeliveryTimeFilter();
 
-        function appendApplyButton() {
-          const button = document.createElement("button");
-          button.id = "reload";
-          button.textContent = "Apply filters";
-          button.style["border"] = "1px solid #000";
-          button.style["background-color"] = "rgb(238, 238, 238)";
-          button.style["font-size"] = "14px";
-          button.style["font-weight"] = "500";
-          button.style["padding"] = "6px 12px";
-          filters.append(button);
+      function appendExclusionFilter() {
+        const exclusionFilter = document.createElement("div");
+        exclusionFilter.style.display = "flex";
+        exclusionFilter.style["flex-direction"] = "column";
+        exclusionFilter.append("Black list");
 
-          jQuery("#reload").click(function () {
-            location.reload();
+        const filterSubtitle = document.createElement("span");
+        filterSubtitle.style["font-size"] = "12px";
+        filterSubtitle.textContent =
+          "use this list to hide restaurants you do not want to see, one per line";
+        exclusionFilter.append(filterSubtitle);
+        const excludeTextArea = document.createElement("textarea");
+
+        excludeTextArea.setAttribute("rows", 20);
+        excludeTextArea.setAttribute("id", "excludeList");
+        excludeTextArea.style.width = "100%";
+        exclusionFilter.append(excludeTextArea);
+        exclusionFilter.style["margin-bottom"] = "12px";
+
+        jQuery(excludeTextArea).val(storedData.excludeList.join("\n"));
+        jQuery(excludeTextArea).on("blur", function () {
+          storedData.excludeList = $(this).val().split("\n");
+          window.localStorage.setItem("ubereats", JSON.stringify(storedData));
+          $("> div", mainFeed).each(function () {
+            autoFilterItems($(this));
           });
-        }
-        appendApplyButton();
-      }, 2500);
-    });
+        });
+        buttonGroup.append(exclusionFilter);
+      }
+      appendExclusionFilter();
+
+      function appendApplyButton() {
+        const button = document.createElement("button");
+        button.id = "reload";
+        button.textContent = "Apply filters";
+        button.style["border"] = "1px solid #000";
+        button.style["background-color"] = "rgb(238, 238, 238)";
+        button.style["font-size"] = "14px";
+        button.style["font-weight"] = "500";
+        button.style["padding"] = "6px 12px";
+        buttonGroup.append(button);
+        $(button).wrap("<div></div>");
+
+        jQuery("#reload").click(function () {
+          location.reload();
+        });
+      }
+      appendApplyButton();
+    }, 2500);
+
+    $("main").arrive(
+      "div[data-test='feed-desktop']",
+      { onlyOnce: true },
+      function () {
+        // 'this' refers to the newly created element
+        var mainFeed = $(this);
+        mainFeed.css("grid-template-columns", "repeat(5, 1fr)");
+        mainFeed.css("gap", "20px 8px");
+        console.log("mainfeed arrived!", mainFeed[0]);
+
+        $("> div", mainFeed).each(function () {
+          autoFilterItems($(this));
+        });
+
+        observer.observe(mainFeed[0], {
+          attributes: true,
+          childList: true,
+          characterData: true,
+        });
+      }
+    );
 
     if (self !== top) {
       setTimeout(() => {
