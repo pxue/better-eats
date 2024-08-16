@@ -2,8 +2,7 @@
 
 Better Eats is a Tampermonkey script that improves Uber Eats web experience.
 
-<img width="1792" alt="Screenshot 2023-08-23 at 12 53 14 PM" src="https://github.com/pxue/better-eats/assets/270494/1344fd0e-3575-48ce-9b43-eec0cf0a8da7">
-
+![Screenshot 2024-08-16 at 7 10 06 PM](https://github.com/user-attachments/assets/fb4193d1-1f82-4fe2-9eb6-aae6514fa74d)
 
 ### Installation:
 1. Install [Tampermonkey](https://tampermonkey.net/)
