@@ -1,15 +1,17 @@
 // ==UserScript==
 // @name         Better Eats
 // @namespace    https://github.com/pxue/better-eats
-// @version      0.1
+// @version      0.2
 // @description  try to take over the world!
 // @author       pxue
 // @match        https://www.ubereats.com/*feed*
 // @match        https://www.ubereats.com/*store*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=ubereats.com
-// @grant        none
 // @require      http://code.jquery.com/jquery-3.6.0.min.js
 // @require      https://raw.githubusercontent.com/uzairfarooq/arrive/master/minified/arrive.min.js
+// @require      https://cdn.jsdelivr.net/npm/uikit@3.21.6/dist/js/uikit.min.js
+// @require      https://cdn.jsdelivr.net/npm/uikit@3.21.6/dist/js/uikit-icons.min.js
+// @resource     FRANKEN_CSS https://unpkg.com/franken-wc@0.0.6/dist/css/slate.min.css
 // ==/UserScript==
 
 (function () {
@@ -17,14 +19,29 @@
 
   jQuery.noConflict();
 
+  // Load remote CSS
+  // @see https://github.com/Tampermonkey/tampermonkey/issues/835
+  const myCss = GM_getResourceText("FRANKEN_CSS");
+  GM_addStyle(myCss);
+
   console.log("loading");
   const debug = true;
 
+  // deal strings
   const deelsStrs = {
-    bogoOnly: "buy 1, get 1 free",
-    spend10Get8: "spend $10, save $8",
+    bogoOnly: "Buy 1, Get 1 Free",
+    spend10Get8: "Spend $10, Save $8",
+    hasOffers: "Offers Available",
   };
 
+  // util functions
+  jQuery.expr[":"].icontains = jQuery.expr.createPseudo(function (arg) {
+    return function (elem) {
+      return jQuery(elem).text().toUpperCase().indexOf(arg.toUpperCase()) >= 0;
+    };
+  });
+
+  // initialize storage
   const raw = window.localStorage.getItem("ubereats");
   const storedData = raw
     ? JSON.parse(raw)
@@ -32,6 +49,7 @@
         // ratingMin: 4.5,
         bogoOnly: false,
         spend10Get8: false,
+        hasOffers: false,
         deliveryTimeMax: 0,
         excludeList: [],
       };
@@ -41,23 +59,26 @@
 
   jQuery(document).ready(function ($) {
     let itemClass = "";
+
     function autoFilterItems(el) {
       if (itemClass === "") {
         itemClass = $(el).attr("class");
       }
 
       function checkShouldHide() {
-        const ahref = $("a", el);
         // 1. check name filters
         for (let ex of storedData.excludeList) {
-          if (ahref.attr("href").includes(ex)) {
+          if ($("a", el).attr("href").includes(ex)) {
+            return [true, "exclude"];
+          }
+          if ($(`div:icontains('${ex}'):not(:has(div))`, el).length > 0) {
             return [true, "exclude"];
           }
         }
 
         function checkDeel(key) {
-          const perkDiv = $("> div > div:nth-child(2)", ahref.next()).eq(0);
-          if (perkDiv.text().toLowerCase().includes(key)) {
+          const perkDiv = $(`div:icontains('${key}'):not(:has(div))`, el);
+          if (perkDiv.length > 0) {
             return true;
           }
           return false;
@@ -67,30 +88,24 @@
         const deelsCheck = Object.keys(deelsStrs)
           .map((k) => (storedData[k] ? checkDeel(deelsStrs[k]) : null))
           .filter((v) => v !== null);
+
         if (deelsCheck?.length && deelsCheck.every((v) => !v)) {
           return [true, "deal"];
         }
 
-        // 4. check delivery time
+        // 3. check delivery time
         const shouldHideDelivery = () => {
-          const div = $(
-            "> div:nth-child(2) > div:nth-child(2) > div",
-            ahref.next()
-          ).eq(1);
-          const text = $("span[aria-hidden=true]", $(div)).text().trim();
+          const div = $(`div:icontains('min'):not(:has(div))`, el);
+          const text = div.text().replace("min", "").trim();
           if (!text) {
             return false;
           }
-          const timing = text.split(" ");
-          if (timing.length > 0) {
-            if (
-              parseFloat(timing[0]) > parseFloat(storedData.deliveryTimeMax)
-            ) {
-              return true;
-            }
-          }
+          const timing = text.split("–");
+          return (
+            parseFloat(timing[timing.length - 1]) >
+            parseFloat(storedData.deliveryTimeMax)
+          );
         };
-
         if (shouldHideDelivery()) {
           return [true, "deliveryTime"];
         }
@@ -108,40 +123,23 @@
         $(el).show();
       }
 
-      // $(el).hover(
-      // () => {
-      // const position = $(el).position();
-      // const width = $(el).width();
-      // const height = $(el).height();
-      // const href = $("a", el).attr("href");
+      // if (self === top) {
+      // const popover = jQuery(`<div
+      // id="card-preview"
+      // class="uk-card uk-card-body uk-card-default uk-drop"
+      // uk-drop="pos: bottom-center"
+      // >
+      // <iframe style="width:100%; height:100%"/>
+      // </div>`);
+      // $(el).append(popover);
 
-      // let iframe;
-      // function appendPreviewIframe() {
-      // const iframePopup = $(`
-      // <div id="framePopup" style="position:absolute; top:${
-      // position.top + height
-      // }px; left:${position.left + width}px; width:900px; height:450px">
-      // </div>
-      // `);
-
-      // iframe = $(
-      // `<iframe id="previewFrame" style="width:100%; height:100%"/>`
-      // );
-      // $(iframePopup).append(iframe);
-
-      // $("body").append(iframePopup);
+      // const iframe = $("iframe", popover);
+      // UIkit.util.on("#card-preview", "beforeshow", () => {
+      // if (!iframe.attr("src")) {
+      // iframe.attr("src", $("a", el).attr("href"));
       // }
-      // appendPreviewIframe();
-
-      // setTimeout(() => {
-      // console.log(iframe);
-      // $(iframe).attr("src", href);
-      // }, 250);
-      // },
-      // () => {
-      // $("#framePopup").remove();
+      // });
       // }
-      // );
     }
 
     var observer = new MutationObserver(function (mutations) {
@@ -162,77 +160,127 @@
 
     setTimeout(() => {
       console.log("main content arrived");
-      const mainContent = $("#main-content");
-      const mainFeed = $("div[data-test='feed-desktop']");
-      const ogButtonGroup = $("div[role='group']", mainContent);
-      const buttonGroup = ogButtonGroup.clone();
-      const buttonTmp = $("button:first", buttonGroup).clone();
-      ogButtonGroup.parent().append(buttonGroup);
-      ogButtonGroup.parent().attr("style", "flex-direction: column; gap: 10px");
-      buttonGroup.empty();
+      const mainContent = $("main#main-content");
+      const mainFeed = document.createElement("div");
+      mainContent.prepend(mainFeed);
 
-      function appendBogoFilter() {
-        const bogoFilter = buttonTmp.clone();
-        bogoFilter.attr("id", "bogoFilter");
-        bogoFilter.contents()[1].textContent = "Buy 1, Get 1";
-        buttonGroup.append(bogoFilter);
-        bogoFilter.wrap("<div></div");
+      const card = jQuery(`
+        <div class="uk-width-1-2@m uk-card">
+          <div id="card-header" class="uk-card-header uk-flex uk-flex-between">
+            <h3 class="uk-card-title">Better Eats</h3>
+            <button id="header-close" type="button" uk-close></button>
+          </div>
+          <div id="card-body" class="uk-card-body uk-padding-remove-top uk-padding-remove-bottom"></div>
+          <div id="card-footer" class="uk-card-footer uk-flex uk-flex-between"></div>
+        </div>
+      `);
+      card.attr(
+        "style",
+        "bottom: 0; height: auto; width: 400px; background-color: palegoldenrod; z-index: 50;"
+      );
+      card.attr("class", "uk-position-fixed uk-flex-column");
+      $("body").append(card);
+
+      // cardBody
+      const cardBody = $("#card-body");
+
+      function close(event) {
+        cardBody.hide();
+        $("#header-close").attr("style", "display: none");
+        $("#card-footer").attr("style", "display: none !important");
+        event.stopPropagation();
+      }
+      $("#header-close").on("click", close);
+
+      function show() {
+        cardBody.show();
+        $("#header-close").attr("style", "display: ''");
+        $("#card-footer").attr("style", "display: ''");
+      }
+      $("#card-header").on("click", show);
+
+      function appendTypesFilter() {
+        const typesFilter = jQuery(`
+        <div class="uk-flex-column">
+        </div>
+        `);
+        cardBody.append(typesFilter);
+
+        const bogoFilter = jQuery(`
+        <div class="flex items-center space-x-2">
+          <input
+            class="uk-toggle-switch uk-toggle-switch-primary"
+            id="bogoFilter"
+            type="checkbox"
+          />
+            <label class="uk-form-label" for="toggle-switch">Buy 1, Get 1</label>
+        </div>
+        `);
+        typesFilter.append(bogoFilter);
+        $("#bogoFilter").attr("checked", storedData.bogoOnly);
 
         bogoFilter.on("click", function () {
           storedData.bogoOnly = !storedData.bogoOnly;
-          bogoFilter.attr(
-            "style",
-            storedData.bogoOnly
-              ? "background-color: black; color: white;"
-              : "background-color: white; color: black;"
-          );
           window.localStorage.setItem("ubereats", JSON.stringify(storedData));
           $("> div", mainFeed).each(function () {
             autoFilterItems($(this));
           });
         });
-      }
-      appendBogoFilter();
 
-      function appendSpend10Get8Filter() {
-        const sp10Filter = buttonTmp.clone();
-        sp10Filter.attr("id", "sp10");
-        sp10Filter.contents()[1].textContent = "Spend $10, Get $8";
-        buttonGroup.append(sp10Filter);
-        sp10Filter.wrap("<div></div");
+        const sp10Filter = jQuery(`
+        <div class="flex items-center space-x-2 mt-3">
+          <input
+            class="uk-toggle-switch uk-toggle-switch-primary"
+            id="sp10"
+            type="checkbox"
+          />
+            <label class="uk-form-label" for="toggle-switch">Spend $10, Get $8</label>
+        </div>
+        `);
+        typesFilter.append(sp10Filter);
+        $("#sp10").attr("checked", storedData.spend10Get8);
 
         sp10Filter.on("click", function () {
           storedData.spend10Get8 = !storedData.spend10Get8;
-          sp10Filter.attr(
-            "style",
-            storedData.spend10Get8
-              ? "background-color: black; color: white;"
-              : "background-color: white; color: black;"
-          );
+          window.localStorage.setItem("ubereats", JSON.stringify(storedData));
+          $("> div", mainFeed).each(function () {
+            autoFilterItems($(this));
+          });
+        });
+
+        const hasOffersFilter = jQuery(`
+        <div class="flex items-center space-x-2 mt-3">
+          <input
+            class="uk-toggle-switch uk-toggle-switch-primary"
+            id="hasOffers"
+            type="checkbox"
+          />
+            <label class="uk-form-label" for="toggle-switch">Has Offers Available</label>
+        </div>
+        `);
+        typesFilter.append(hasOffersFilter);
+        $("#hasOffers").attr("checked", storedData.hasOffers);
+
+        hasOffersFilter.on("click", function () {
+          storedData.hasOffers = !storedData.hasOffers;
           window.localStorage.setItem("ubereats", JSON.stringify(storedData));
           $("> div", mainFeed).each(function () {
             autoFilterItems($(this));
           });
         });
       }
-      appendSpend10Get8Filter();
+      appendTypesFilter();
 
       function appendDeliveryTimeFilter() {
-        const filter = document.createElement("div");
-        filter.style.display = "flex";
-        filter.style["flex-direction"] = "column";
-        filter.style["margin-bottom"] = "12px";
-        filter.append("Delivery time");
-
-        const input = jQuery(
-          `<div style="display:flex;">
-        Max delivery time:
-        <input id="deliveryTimeMax" type="number" style="border: 1px solid #000" />
-        </div>`
-        );
-
-        filter.append(input[0]);
-        buttonGroup.append(filter);
+        const filter = jQuery(`
+          <div class="uk-margin">
+            <label class="uk-form-label" for="form-stacked-text">Max delivery time (min.)</label>
+            <div class="uk-form-controls uk-background-default">
+              <input id="deliveryTimeMax" type="number" class="uk-input" />
+            </div>
+          </div>
+        `);
+        cardBody.append(filter);
 
         jQuery("#deliveryTimeMax").val(storedData.deliveryTimeMax);
         jQuery("#deliveryTimeMax").on("blur", function () {
@@ -246,51 +294,42 @@
       appendDeliveryTimeFilter();
 
       function appendExclusionFilter() {
-        const exclusionFilter = document.createElement("div");
-        exclusionFilter.style.display = "flex";
-        exclusionFilter.style["flex-direction"] = "column";
-        exclusionFilter.append("Black list");
+        const filter = jQuery(`
+          <div class="uk-margin">
+            <label class="uk-form-label" for="form-stacked-text">Black list</label>
+            <div class="uk-form-controls uk-background-default">
+              <textarea id="excludeList" class="uk-textarea uk-height-medium"></textarea>
+            </div>
+            <div class="uk-form-help">
+              Hide restaurants you do not want to see, one per line, ie. 'bubble tea', 'mcdonald'
+            </div>
+          </div>
+        `);
+        cardBody.append(filter);
 
-        const filterSubtitle = document.createElement("span");
-        filterSubtitle.style["font-size"] = "12px";
-        filterSubtitle.textContent =
-          "use this list to hide restaurants you do not want to see, one per line";
-        exclusionFilter.append(filterSubtitle);
-        const excludeTextArea = document.createElement("textarea");
-
-        excludeTextArea.setAttribute("rows", 20);
-        excludeTextArea.setAttribute("id", "excludeList");
-        excludeTextArea.style.width = "100%";
-        exclusionFilter.append(excludeTextArea);
-        exclusionFilter.style["margin-bottom"] = "12px";
-
-        jQuery(excludeTextArea).val(storedData.excludeList.join("\n"));
-        jQuery(excludeTextArea).on("blur", function () {
+        jQuery("#excludeList").val(storedData.excludeList.join("\n"));
+        jQuery("#excludeList").on("blur", function () {
           storedData.excludeList = $(this).val().split("\n");
           window.localStorage.setItem("ubereats", JSON.stringify(storedData));
           $("> div", mainFeed).each(function () {
             autoFilterItems($(this));
           });
         });
-        buttonGroup.append(exclusionFilter);
       }
       appendExclusionFilter();
 
       function appendApplyButton() {
-        const button = document.createElement("button");
-        button.id = "reload";
-        button.textContent = "Apply filters";
-        button.style["border"] = "1px solid #000";
-        button.style["background-color"] = "rgb(238, 238, 238)";
-        button.style["font-size"] = "14px";
-        button.style["font-weight"] = "500";
-        button.style["padding"] = "6px 12px";
-        buttonGroup.append(button);
-        $(button).wrap("<div></div>");
+        const button = jQuery(`
+          <button id="close" class="uk-button uk-button-default">Close</button>
+          <button id="reload" class="uk-button uk-button-primary">Apply</button>
+        `);
+        $("#card-footer").append(button);
 
         jQuery("#reload").click(function () {
           location.reload();
         });
+
+        jQuery("#close").click(close);
       }
       appendApplyButton();
     }, 2500);
@@ -301,6 +340,8 @@
       function () {
         // 'this' refers to the newly created element
         var mainFeed = $(this);
+
+        // update the grid to 5 per row
         mainFeed.css("grid-template-columns", "repeat(5, 1fr)");
         mainFeed.css("gap", "20px 8px");
         console.log("mainfeed arrived!", mainFeed[0]);
@@ -318,6 +359,7 @@
     );
 
     if (self !== top) {
+      // this is the popover preview
       setTimeout(() => {
         const deals = [];
         $("div[data-testid^='store-menu-item']").each(function () {

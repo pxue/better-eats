@@ -28,3 +28,22 @@ Better Eats is a Tampermonkey script that improves Uber Eats web experience.
 
 Value of the exclusion list is stored in local storage as a JSON array. You can
 manually update via the UI or directly in the storage.
+
+
+### How to develop
+
+You can directly edit the extension via tampermonkey dashboard or load
+`script.user.js` file
+
+To load the the script file, create a new script with only the following header
+
+```
+// ==UserScript==
+// @name         Better Eats
+// @namespace    https://ubereats.com/
+// @grant        none
+// @require      file://<path to script.user.js>
+// ==/UserScript==
+```
+
+From there, enable local file url access via https://www.tampermonkey.net/faq.php?locale=en#Q204
