@@ -12,7 +12,6 @@
 // @require      https://cdn.jsdelivr.net/npm/uikit@3.21.6/dist/js/uikit.min.js
 // @require      https://cdn.jsdelivr.net/npm/uikit@3.21.6/dist/js/uikit-icons.min.js
 // @require      https://raw.githubusercontent.com/uzairfarooq/arrive/master/minified/arrive.min.js
-// @require      file:///Users/paul/dev/better-eats/script.user.js
 // @grant        GM_getResourceText
 // @grant        GM_addStyle
 // ==/UserScript==
