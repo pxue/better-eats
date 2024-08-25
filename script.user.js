@@ -7,11 +7,14 @@
 // @match        https://www.ubereats.com/*feed*
 // @match        https://www.ubereats.com/*store*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=ubereats.com
+// @resource     FRANKEN_CSS https://unpkg.com/franken-wc@0.0.6/dist/css/slate.min.css
 // @require      http://code.jquery.com/jquery-3.6.0.min.js
-// @require      https://raw.githubusercontent.com/uzairfarooq/arrive/master/minified/arrive.min.js
 // @require      https://cdn.jsdelivr.net/npm/uikit@3.21.6/dist/js/uikit.min.js
 // @require      https://cdn.jsdelivr.net/npm/uikit@3.21.6/dist/js/uikit-icons.min.js
-// @resource     FRANKEN_CSS https://unpkg.com/franken-wc@0.0.6/dist/css/slate.min.css
+// @require      https://raw.githubusercontent.com/uzairfarooq/arrive/master/minified/arrive.min.js
+// @require      file:///Users/paul/dev/better-eats/script.user.js
+// @grant        GM_getResourceText
+// @grant        GM_addStyle
 // ==/UserScript==
 
 (function () {
