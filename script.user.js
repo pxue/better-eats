@@ -97,7 +97,7 @@
 
         // 3. check delivery time
         const shouldHideDelivery = () => {
-          const div = $(`div:icontains('min'):not(:has(div))`, el);
+          const div = $(`span:icontains('min'):not(:has(div))`, el);
           const text = div.text().replace("min", "").trim();
           if (!text) {
             return false;
